@@ -1,76 +1,66 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import styles from "./Module.module.scss";
 
 export default function Page() {
+  const iframeRef = useRef(null);
+
   useEffect(() => {
-    // Проверяем, не загружен ли уже скрипт
-    if (document.querySelector('script[src*="booking_iframe.js"]')) {
-      initWidget();
-      return;
-    }
+    // Функция для обработки iframe после загрузки
+    const setupIframe = () => {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
 
-    // Загружаем скрипт
-    const script = document.createElement("script");
-    script.src =
-      "https://widget.reservationsteps.ru/iframe/library/dist/booking_iframe.js";
-    script.async = true;
+      // Функция для вызова после загрузки iframe
+      const onIframeLoad = () => {
+        // Проверяем, что функции существуют в глобальном окне
+        if (window.WidgetBookingOnLoadIframe) {
+          window.WidgetBookingOnLoadIframe(iframe, false, null, null, {});
+        }
+        if (window.SetRoistatVisitId) {
+          window.SetRoistatVisitId(iframe);
+        }
+      };
 
-    script.onload = initWidget;
+      // Добавляем обработчик загрузки
+      iframe.addEventListener("load", onIframeLoad);
 
-    document.head.appendChild(script);
-
-    return () => {
-      // Очистка при размонтировании
-      const existingScript = document.querySelector(
-        'script[src*="booking_iframe.js"]',
-      );
-      if (existingScript) {
-        document.head.removeChild(existingScript);
+      // Если iframe уже загружен, вызываем сразу
+      if (iframe.contentDocument?.readyState === "complete") {
+        onIframeLoad();
       }
-    };
-  }, []);
 
-  const initWidget = () => {
-    // Инициализируем виджет после загрузки скрипта
-    if (window.BookingIframe) {
-      const BnovoBookFrame = new window.BookingIframe({
-        html_id: "booking_iframe",
-        uid: "1e8bc851-59f4-4698-8b25-19b46beada1d",
-        lang: "ru",
-        width: "auto",
-        height: "auto",
-        rooms: "",
-        IsMobile: "0",
-        scroll_to_rooms: "0",
-        fixed_header_selector: "",
-        fixed_mobile_header_width: 800,
-        fixed_mobile_header_selector: "",
-        fixed_footer_selector: "",
-        fixed_mobile_footer_width: 800,
-        fixed_mobile_footer_selector: "",
-      });
-      BnovoBookFrame.init();
-    }
-  };
+      // Очистка при размонтировании
+      return () => {
+        iframe.removeEventListener("load", onIframeLoad);
+      };
+    };
+
+    // Даем время на монтирование iframe в DOM
+    const timer = setTimeout(setupIframe, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <section className={styles.bookingSection}>
-      <div className={styles.bookingContainer}>
-        <div className={styles.bookingWidget} id="booking_iframe">
-          <div className={styles.bnovoBranding} id="bn_iframe">
-            <a
-              className={styles.bnovoLink}
-              href="https://bnovo.ru/bnovo-mb/?utm_source=client_modul_br"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Система управления отелем Bnovo ©
-            </a>
-          </div>
+      <div className="container">
+        <div className={styles.widgetWrapper}>
+          <iframe
+            ref={iframeRef}
+            style={{
+              border: 0,
+              outline: 0,
+              overflow: "hidden !important",
+              minHeight: "auto !important",
+              width: "100%",
+            }}
+            src="https://widgets.ays-office.ru/booking/#/%7B%22primary%22%3A%22134734%22%2C%22background%22%3A%22faf4df%22%2C%22foreground%22%3A%22fffefa%22%2C%22text%22%3A%22134734%22%2C%22widgetId%22%3A%2265558%22%7D/calendar/22/hotel/131094"
+            id="widgetBookingReservations"
+            scrolling="no"
+            title="Виджет бронирования"
+            className={styles.iframe}
+          />
         </div>
-
-        {/* Индикатор загрузки */}
       </div>
     </section>
   );
